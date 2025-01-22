@@ -1,68 +1,58 @@
-let newYorkCoords = [40.73, -74.0059];
-let mapZoomLevel = 12;
-
-let myMap = L.map("map-id", {
-  center: newYorkCoords,
-  zoom: mapZoomLevel
-});
-
-// Create the createMap function.
 function createMap(bikeStations) {
 
   // Create the tile layer that will be the background of our map.
-  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+  let streetmap = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
       attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-  }).addTo(myMap);
-
-  bikeStations.forEach(station => {
-    L.marker([station.lat, station.lon])
-    .bindPopup(`<h1>${station.name}</h1><hr><h3>Capacity: ${station.capacity.toLocaleString()}</h3>`)
-    .addTo(myMap);
   });
 
-  // Create a baseMaps object to hold the lightmap layer.
 
+  // Create a baseMaps object to hold the streetmap layer.
+  let baseMaps = {
+    "Street Map": streetmap
+  };
 
   // Create an overlayMaps object to hold the bikeStations layer.
-
+  let overlayMaps = {
+    "Bike Stations": bikeStations
+  };
 
   // Create the map object with options.
+  let map = L.map("map-id", {
+    center: [40.73, -74.0059],
+    zoom: 12,
+    layers: [streetmap, bikeStations]
+  });
 
-
-  // Create a layer control, and pass it baseMaps and overlayMaps. Add the layer control to the map.
+  // Create a layer control, and pass it  baseMaps and overlayMaps. Add the layer control to the map.
+  L.control.layers(baseMaps, overlayMaps, {
+    collapsed: false
+  }).addTo(map);
 }
 
-// Create the createMarkers function.
+function createMarkers(response) {
 
   // Pull the "stations" property from response.data.
+  let stations = response.data.stations;
 
   // Initialize an array to hold the bike markers.
+  let bikeMarkers = [];
 
   // Loop through the stations array.
+  for (let index = 0; index < stations.length; index++) {
+    let station = stations[index];
+
     // For each station, create a marker, and bind a popup with the station's name.
+    let bikeMarker = L.marker([station.lat, station.lon])
+      .bindPopup("<h3>" + station.name + "<h3><h3>Capacity: " + station.capacity + "</h3>");
 
     // Add the marker to the bikeMarkers array.
+    bikeMarkers.push(bikeMarker);
+  }
 
   // Create a layer group that's made from the bike markers array, and pass it to the createMap function.
+  createMap(L.layerGroup(bikeMarkers));
+}
 
 
 // Perform an API call to the Citi Bike API to get the station information. Call createMarkers when it completes.
-let link = "https://gbfs.citibikenyc.com/gbfs/en/station_information.json";
-
-d3.json(link).then(function(response) {
-  console.log(response);
-
-  let stations = response.data.stations;
-  let statusLink = "https://gbfs.citibikenyc.com/gbfs/en/station_status.json";
-
-  d3.json(statusLink).then(function(response) {
-    console.log(response);
-    let stationStatus = response.data.stations;
-
-    let merged = Object.assign({}, stations, stationStatus);
-
-    console.log(merged);
-
-    createMap(stations);
-  });
-});
+d3.json("https://gbfs.citibikenyc.com/gbfs/en/station_information.json").then(createMarkers);
